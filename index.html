@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Linode Bulk Panel</title>
+<style>
+:root{
+  --bg:#12161d; --panel:#1a2029; --line:#2a3340; --text:#e8ecf2; --mute:#8b96a8;
+  --acc:#1fbf6b; --acc-ink:#04170d; --warn:#f0b43c; --bad:#ef5b5b; --field:#10141a;
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#f2f4f7; --panel:#ffffff; --line:#d9dfe8; --text:#18202b; --mute:#5f6b7d; --acc:#0f9d58; --acc-ink:#ffffff; --field:#f7f9fb;}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",sans-serif;padding:14px;padding-top:max(14px,env(safe-area-inset-top));padding-bottom:max(14px,env(safe-area-inset-bottom))}
+main{max-width:920px;margin:0 auto;display:grid;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+h1{font-size:20px;margin:0;letter-spacing:.2px}
+h2{font-size:16px;margin:0 0 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px}
+label{display:block;font-size:13px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:var(--text);font:inherit}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.row{grid-template-columns:1fr}}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+button{padding:10px 14px;border-radius:6px;border:1px solid var(--line);background:var(--field);color:var(--text);font:inherit;cursor:pointer}
+button.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+button.danger{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.hint{color:var(--mute);font-size:13px;margin:8px 0 0}
+.err{color:var(--bad);font-size:14px;margin:8px 0 0;white-space:pre-wrap}
+.msg{color:var(--acc);font-size:14px;margin:8px 0 0}
+.tablewrap{overflow-x:auto;margin-top:10px}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:14px;white-space:nowrap}
+th{color:var(--mute);font-weight:500;font-size:13px}
+td.ip{font-family:ui-monospace,Menlo,Consolas,monospace}
+input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--acc)}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line)}
+.badge.running{color:var(--acc);border-color:var(--acc)}
+.badge.provisioning,.badge.booting,.badge.rebooting,.badge.shutting_down,.badge.migrating,.badge.rebuilding,.badge.cloning,.badge.restoring{color:var(--warn);border-color:var(--warn)}
+.badge.offline,.badge.stopped{color:var(--mute)}
+.mini{padding:4px 8px;font-size:12px}
+.hidden{display:none}
+.count{color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Linode Bulk Panel</h1>
+  <button id="disc" class="hidden">Disconnect</button>
+</header>
+
+<!-- Connect -->
+<section id="connectBox" class="panel">
+  <h2>API Token দিয়ে Connect করুন</h2>
+  <label for="tok">Linode Personal Access Token</label>
+  <input id="tok" type="password" autocomplete="off" placeholder="Token এখানে পেস্ট করুন">
+  <div class="bar"><button id="connect" class="primary">Connect</button></div>
+  <p class="hint">টোকেন শুধু আপনার ব্রাউজার থেকে সরাসরি Linode-এ যায়। কোনো সার্ভারে জমা হয় না। ট্যাব বন্ধ করলে মুছে যায়।</p>
+  <p id="connErr" class="err"></p>
+</section>
+
+<!-- App -->
+<div id="app" class="hidden" style="display:none;gap:14px">
+  <section class="panel">
+    <h2>নতুন সার্ভার তৈরি</h2>
+    <div class="row">
+      <div><label for="prefix">Label prefix</label><input id="prefix" value="server"></div>
+      <div><label for="count">কয়টি সার্ভার</label><input id="count" type="number" min="1" max="50" value="10"></div>
+    </div>
+    <label for="region">Location</label><select id="region"></select>
+    <label for="image">OS Version</label><select id="image"></select>
+    <label for="type">Plan</label><select id="type"></select>
+    <label for="pw">Root Password</label>
+    <input id="pw" type="text" autocomplete="off" placeholder="খালি রাখলে প্রতিটির জন্য আলাদা পাসওয়ার্ড তৈরি হবে">
+    <p class="hint">নিজের পাসওয়ার্ড দিলে কমপক্ষে ৮ অক্ষর, বড়-ছোট হাতের অক্ষর ও সংখ্যা থাকতে হবে।</p>
+    <div class="bar"><button id="create" class="primary">Create Servers</button><span id="createStat" class="count"></span></div>
+    <p id="createErr" class="err"></p>
+  </section>
+
+  <section id="resultBox" class="panel hidden">
+    <h2>তৈরি হওয়া সার্ভার</h2>
+    <textarea id="out" rows="8" readonly></textarea>
+    <div class="bar"><button id="copyAll" class="primary">সব Copy করুন</button><button id="csv">CSV ডাউনলোড</button></div>
+    <p class="hint">ফরম্যাট: label | IP | password। এই পাসওয়ার্ড পরে আর দেখা যাবে না, এখনই সেভ করে রাখুন।</p>
+  </section>
+
+  <section class="panel">
+    <h2>আপনার সার্ভার <span id="total" class="count"></span></h2>
+    <input id="search" placeholder="Label, IP বা Region দিয়ে খুঁজুন">
+    <div class="bar">
+      <button id="selAll">সব Select</button>
+      <button id="selNone">Unselect</button>
+      <button id="refresh">Refresh</button>
+      <button id="del" class="danger">Selected Delete</button>
+      <span id="selCount" class="count"></span>
+    </div>
+    <p id="listMsg" class="msg"></p>
+    <p id="listErr" class="err"></p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th></th><th>Label</th><th>IP</th><th>Region</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+</main>
+
+<script>
+const API = "https://api.linode.com/v4";
+let token = "";
+try { token = sessionStorage.getItem("lt") || ""; } catch (e) {}
+let servers = [];
+let lastCreated = [];
+
+const $ = id => document.getElementById(id);
+
+async function api(path, opt) {
+  opt = opt || {};
+  const res = await fetch(API + path, {
+    method: opt.method || "GET",
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: opt.body ? JSON.stringify(opt.body) : undefined
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) {
+    const m = data && data.errors ? data.errors.map(e => (e.field ? e.field + ": " : "") + e.reason).join("; ") : "HTTP " + res.status;
+    throw new Error(m);
+  }
+  return data;
+}
+
+async function getAll(path) {
+  const sep = path.includes("?") ? "&" : "?";
+  const first = await api(path + sep + "page_size=500&page=1");
+  let items = first.data || [];
+  for (let p = 2; p <= (first.pages || 1); p++) {
+    const next = await api(path + sep + "page_size=500&page=" + p);
+    items = items.concat(next.data || []);
+  }
+  return items;
+}
+
+function fill(sel, items, valueKey, textFn) {
+  const el = $(sel);
+  el.textContent = "";
+  items.forEach(it => {
+    const o = document.createElement("option");
+    o.value = it[valueKey];
+    o.textContent = textFn(it);
+    el.appendChild(o);
+  });
+}
+
+function show(connected) {
+  $("connectBox").style.display = connected ? "none" : "";
+  $("app").style.display = connected ? "grid" : "none";
+  $("disc").classList.toggle("hidden", !connected);
+}
+
+async function connect() {
+  $("connErr").textContent = "";
+  const t = $("tok").value.trim() || token;
+  if (!t) { $("connErr").textContent = "টোকেন দিন।"; return; }
+  token = t;
+  $("connect").disabled = true;
+  try {
+    const [regions, images, types] = await Promise.all([
+      getAll("/regions"), getAll("/images"), getAll("/linode/types")
+    ]);
+    await loadServers();
+    fill("region", regions.filter(r => (r.capabilities || []).includes("Linodes")), "id", r => r.label + " (" + r.id + ")");
+    const pubImages = images.filter(i => i.is_public && i.id.startsWith("linode/"))
+      .sort((a, b) => a.label.localeCompare(b.label));
+    fill("image", pubImages, "id", i => i.label);
+    const ubuntu = pubImages.filter(i => i.id.startsWith("linode/ubuntu")).pop();
+    if (ubuntu) $("image").value = ubuntu.id;
+    fill("type", types, "id", t => t.label + " ($" + t.price.monthly + "/mo)");
+    try { sessionStorage.setItem("lt", token); } catch (e) {}
+    $("tok").value = "";
+    show(true);
+  } catch (e) {
+    token = "";
+    try { sessionStorage.removeItem("lt"); } catch (x) {}
+    $("connErr").textContent = (e.message === "Failed to fetch")
+      ? "Linode-এর সাথে যোগাযোগ হয়নি। ইন্টারনেট দেখুন, তারপর আবার চেষ্টা করুন।"
+      : "Connect হয়নি: " + e.message + "\nটোকেনে Linodes ও Images (Read/Write বা Read) পারমিশন আছে কিনা দেখুন।";
+  }
+  $("connect").disabled = false;
+}
+
+function disconnect() {
+  token = "";
+  try { sessionStorage.removeItem("lt"); } catch (e) {}
+  servers = [];
+  show(false);
+}
+
+async function loadServers() {
+  servers = await getAll("/linode/instances");
+  renderRows();
+}
+
+function renderRows() {
+  const q = $("search").value.trim().toLowerCase();
+  const tb = $("rows");
+  tb.textContent = "";
+  const list = servers.filter(s => !q || (s.label + " " + s.ipv4.join(" ") + " " + s.region).toLowerCase().includes(q));
+  list.forEach(s => {
+    const tr = document.createElement("tr");
+    const c0 = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.className = "chk"; cb.value = s.id;
+    cb.addEventListener("change", updateSel);
+    c0.appendChild(cb);
+    const c1 = document.createElement("td"); c1.textContent = s.label;
+    const c2 = document.createElement("td"); c2.className = "ip"; c2.textContent = s.ipv4[0] || "";
+    const c3 = document.createElement("td"); c3.textContent = s.region;
+    const c4 = document.createElement("td");
+    const b = document.createElement("span"); b.className = "badge " + s.status; b.textContent = s.status;
+    c4.appendChild(b);
+    const c5 = document.createElement("td");
+    const cp = document.createElement("button"); cp.className = "mini"; cp.textContent = "Copy IP";
+    cp.addEventListener("click", () => copy(s.ipv4[0] || "", cp));
+    c5.appendChild(cp);
+    [c0, c1, c2, c3, c4, c5].forEach(c => tr.appendChild(c));
+    tb.appendChild(tr);
+  });
+  $("total").textContent = "(" + servers.length + "টি)";
+  updateSel();
+}
+
+function updateSel() {
+  const n = document.querySelectorAll(".chk:checked").length;
+  $("selCount").textContent = n ? n + "টি সিলেক্ট করা" : "";
+}
+
+async function copy(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const t = document.createElement("textarea");
+    t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); } catch (x) {}
+    t.remove();
+  }
+  if (btn) { const old = btn.textContent; btn.textContent = "Copied"; setTimeout(() => btn.textContent = old, 1200); }
+}
+
+function genPass() {
+  const U = "ABCDEFGHJKLMNPQRSTUVWXYZ", L = "abcdefghijkmnopqrstuvwxyz", D = "23456789";
+  const all = U + L + D;
+  const pick = set => set[crypto.getRandomValues(new Uint32Array(1))[0] % set.length];
+  let p = [pick(U), pick(L), pick(D)];
+  while (p.length < 16) p.push(pick(all));
+  for (let i = p.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [p[i], p[j]] = [p[j], p[i]];
+  }
+  return p.join("");
+}
+
+async function createServers() {
+  $("createErr").textContent = "";
+  const prefix = $("prefix").value.trim() || "server";
+  const count = Math.max(1, Math.min(50, parseInt($("count").value, 10) || 1));
+  const region = $("region").value, image = $("image").value, type = $("type").value;
+  const fixedPw = $("pw").value;
+  $("create").disabled = true;
+  lastCreated = [];
+  const errors = [];
+  for (let i = 1; i <= count; i++) {
+    $("createStat").textContent = i + " / " + count + " তৈরি হচ্ছে...";
+    const pw = fixedPw || genPass();
+    const label = prefix + "-" + i;
+    try {
+      const r = await api("/linode/instances", { method: "POST", body: { label, region, type, image, root_pass: pw } });
+      lastCreated.push([r.label, r.ipv4[0], pw]);
+    } catch (e) {
+      errors.push(label + ": " + e.message);
+      if (/limit|exceed|payment|verification/i.test(e.message)) break;
+    }
+  }
+  $("createStat").textContent = lastCreated.length + "টি তৈরি হয়েছে";
+  if (errors.length) $("createErr").textContent = errors.join("\n");
+  if (lastCreated.length) {
+    $("out").value = lastCreated.map(c => c.join("|")).join("\n");
+    $("resultBox").classList.remove("hidden");
+  }
+  $("create").disabled = false;
+  try { await loadServers(); } catch (e) {}
+}
+
+async function deleteSelected() {
+  const ids = Array.from(document.querySelectorAll(".chk:checked")).map(c => c.value);
+  $("listErr").textContent = ""; $("listMsg").textContent = "";
+  if (!ids.length) { $("listErr").textContent = "আগে সার্ভার সিলেক্ট করুন।"; return; }
+  if (!confirm(ids.length + "টি সার্ভার ডিলিট করবেন? ডেটা ফেরত আসবে না।")) return;
+  $("del").disabled = true;
+  let ok = 0; const errors = [];
+  for (let i = 0; i < ids.length; i++) {
+    $("listMsg").textContent = (i + 1) + " / " + ids.length + " ডিলিট হচ্ছে...";
+    try { await api("/linode/instances/" + ids[i], { method: "DELETE" }); ok++; }
+    catch (e) { errors.push(ids[i] + ": " + e.message); }
+  }
+  $("listMsg").textContent = ok + "টি ডিলিট হয়েছে";
+  if (errors.length) $("listErr").textContent = errors.join("\n");
+  $("del").disabled = false;
+  try { await loadServers(); } catch (e) {}
+}
+
+function downloadCsv() {
+  const rows = [["label", "ip", "password"]].concat(lastCreated);
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "servers.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+$("connect").addEventListener("click", connect);
+$("tok").addEventListener("keydown", e => { if (e.key === "Enter") connect(); });
+$("disc").addEventListener("click", disconnect);
+$("create").addEventListener("click", createServers);
+$("copyAll").addEventListener("click", () => copy($("out").value, $("copyAll")));
+$("csv").addEventListener("click", downloadCsv);
+$("del").addEventListener("click", deleteSelected);
+$("search").addEventListener("input", renderRows);
+$("selAll").addEventListener("click", () => { document.querySelectorAll(".chk").forEach(c => c.checked = true); updateSel(); });
+$("selNone").addEventListener("click", () => { document.querySelectorAll(".chk").forEach(c => c.checked = false); updateSel(); });
+$("refresh").addEventListener("click", async () => {
+  $("listErr").textContent = "";
+  try { await loadServers(); } catch (e) { $("listErr").textContent = e.message; }
+});
+
+if (token) connect();
+</script>
+</body>
+</html>
